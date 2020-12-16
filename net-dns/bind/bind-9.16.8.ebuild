@@ -282,15 +282,9 @@ pkg_postinst() {
 	tmpfiles_process "${FILESDIR}"/named.conf
 
 	if [ ! -f '/etc/bind/rndc.key' ]; then
-		if use urandom; then
-			einfo "Using /dev/urandom for generating rndc.key"
-			/usr/sbin/rndc-confgen -r /dev/urandom -a
-			echo
-		else
-			einfo "Using /dev/random for generating rndc.key"
-			/usr/sbin/rndc-confgen -a
-			echo
-		fi
+		einfo "Using /dev/random for generating rndc.key"
+		/usr/sbin/rndc-confgen -a
+		echo
 		chown root:named /etc/bind/rndc.key || die
 		chmod 0640 /etc/bind/rndc.key || die
 	fi
