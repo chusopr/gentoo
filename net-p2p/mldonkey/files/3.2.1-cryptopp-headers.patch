@@ -1,0 +1,55 @@
+From 05908f6595c15467bdc2227ac769faf2f65c7f21 Mon Sep 17 00:00:00 2001
+From: ygrek <root@ygrek.org>
+Date: Mon, 26 Aug 2024 10:49:49 -0400
+Subject: [PATCH] ci: install crypto++
+
+---
+ .github/workflows/workflow.yml | 31 ++++++++++++++++++++++++++++++-
+ mldonkey.opam                  |  7 +++++--
+ src/utils/lib/CryptoPP.cc      |  8 ++++----
+ 3 files changed, 39 insertions(+), 7 deletions(-)
+
+diff --git a/mldonkey.opam b/mldonkey.opam
+index bbdec157..11da0452 100644
+--- a/mldonkey.opam
++++ b/mldonkey.opam
+@@ -9,18 +9,21 @@ Supported networks include:
+  * HTTP/FTP
+ MLdonkey core runs as a background daemon and provides several control
+ interfaces : telnet, web, and binary protocol for third party GUIs."""
+-maintainer: "ygrek@autistici.org"
++maintainer: "root@ygrek.org"
+ authors: "mldonkey team"
+ license: "GPL-2.0-only"
+ homepage: "http://github.com/ygrek/mldonkey"
+ dev-repo: "git+https://github.com/ygrek/mldonkey.git"
+ bug-reports: "https://github.com/ygrek/mldonkey/issues"
++# mldonkey has many optional components (most of which depend on system libraries),
++# this set of dependencies here represents one arbitrary selection
+ depends: [
+   "ocaml" {>= "4.03.0"}
+   "camlp4"
++  "conf-gd" {optional} # graphical stats
+   "conf-m4"
+   "conf-zlib"
+-  "num"
++  "num" # technically optional, enables bittorrent
+ ]
+ build: [
+   ["./configure" "--enable-debug" "--prefix" prefix]
+diff --git a/src/utils/lib/CryptoPP.cc b/src/utils/lib/CryptoPP.cc
+index 0a8d7383..58e04445 100644
+--- a/src/utils/lib/CryptoPP.cc
++++ b/src/utils/lib/CryptoPP.cc
+@@ -1,7 +1,7 @@
+-#include <crypto++/rsa.h>
+-#include <crypto++/osrng.h>
+-#include <crypto++/base64.h>
+-#include <crypto++/cryptlib.h>
++#include <cryptopp/rsa.h>
++#include <cryptopp/osrng.h>
++#include <cryptopp/base64.h>
++#include <cryptopp/cryptlib.h>
+ 
+ // Standard stuff from other gpl clients, external for mldonkey. 
+ 

@@ -1,0 +1,66 @@
+From b60c9bc9ef99bfb4eb027a541d614c4a47c8a28b Mon Sep 17 00:00:00 2001
+From: ygrek <root@ygrek.org>
+Date: Sat, 24 Aug 2024 23:28:39 -0400
+Subject: [PATCH] build: show system
+
+---
+ config/configure    | 8 +++++---
+ config/configure.in | 8 +++++---
+ 2 files changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/config/configure b/config/configure
+index 98bf24a7..00f01f41 100755
+--- a/config/configure
++++ b/config/configure
+@@ -12931,11 +12931,12 @@ echo "Building dependencies (if it blocks, try '$GNU_MAKE depend' to see the pro
+ $GNU_MAKE depend 2> /dev/null > /dev/null || echo "Building dependencies fails: try: '$GNU_MAKE depend'"
+ 
+ echo ""
+-printf "Configuring MLDonkey %s" "$MLDONKEY_VERSION"
++printf "Configuring MLDonkey %s completed." "$MLDONKEY_VERSION"
+ if test ! -z "$SCM_VERSION"; then
+-  printf " - SCM: %s" "$SCM_VERSION"
++  echo " - SCM     $SCM_VERSION"
+ fi
+-echo " completed."
++echo " - host    $host"
++echo " - system  $SYSTEM"
+ 
+ echo ""
+ echo "Network modules:"
+@@ -13099,6 +13100,7 @@ echo " - $CC version       $CC_VERSION"
+ if test "x$CXX" != "x"; then
+   echo " - $CXX version       $CXX_VERSION"
+ fi
++
+ echo ""
+ echo "\nNow execute '$GNU_MAKE' to start compiling. Good luck!"
+ 
+diff --git a/config/configure.in b/config/configure.in
+index cc7219ef..90609887 100644
+--- a/config/configure.in
++++ b/config/configure.in
+@@ -1449,11 +1449,12 @@ echo "Building dependencies (if it blocks, try '$GNU_MAKE depend' to see the pro
+ $GNU_MAKE depend 2> /dev/null > /dev/null || echo "Building dependencies fails: try: '$GNU_MAKE depend'"
+ 
+ echo ""
+-printf "Configuring MLDonkey %s" "$MLDONKEY_VERSION"
++printf "Configuring MLDonkey %s completed." "$MLDONKEY_VERSION"
+ if test ! -z "$SCM_VERSION"; then
+-  printf " - SCM: %s" "$SCM_VERSION"
++  echo " - SCM     $SCM_VERSION"
+ fi
+-echo " completed."
++echo " - host    $host"
++echo " - system  $SYSTEM"
+ 
+ echo ""
+ echo "Network modules:"
+@@ -1617,6 +1618,7 @@ echo " - $CC version       $CC_VERSION"
+ if test "x$CXX" != "x"; then
+   echo " - $CXX version       $CXX_VERSION"
+ fi
++
+ echo ""
+ echo "\nNow execute '$GNU_MAKE' to start compiling. Good luck!"
+ 

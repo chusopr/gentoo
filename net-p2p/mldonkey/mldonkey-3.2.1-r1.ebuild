@@ -32,6 +32,7 @@ RDEPEND="dev-lang/perl
 # https://github.com/ygrek/mldonkey/issues/46
 DEPEND="${RDEPEND}
 	<dev-lang/ocaml-5:=[ocamlopt?]
+	dev-libs/crypto++
 	bittorrent? ( dev-ml/num )
 "
 
@@ -39,6 +40,12 @@ RESTRICT="!ocamlopt? ( strip )"
 
 PATCHES=(
 	"${FILESDIR}/${PV}-gcc15-md4init-args.patch"
+	"${FILESDIR}/${PV}-require-pthreads.patch"
+	"${FILESDIR}/${PV}-show-build-system.patch"
+	"${FILESDIR}/${PV}-retab-configure.patch"
+	"${FILESDIR}/${PV}-cryptopp-unbundle.patch"
+	"${FILESDIR}/${PV}-cryptopp-configure.patch"
+	"${FILESDIR}/${PV}-cryptopp-headers.patch"
 )
 
 pkg_setup() {

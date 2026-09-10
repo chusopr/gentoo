@@ -1,0 +1,395 @@
+From b2eee562c85a8aa3756cf82615802bd48ac00396 Mon Sep 17 00:00:00 2001
+From: ygrek <root@ygrek.org>
+Date: Sat, 24 Aug 2024 20:40:20 -0400
+Subject: [PATCH] build: pthreads are required
+
+build without pthreads was broken for 10 years and nobody complained anw
+---
+ config/configure                   |  34 +------
+ config/configure.in                |  24 +----
+ src/daemon/common/commonHasher_c.c | 154 +----------------------------
+ src/utils/lib/stubs_c.c            |  10 +-
+ 4 files changed, 14 insertions(+), 208 deletions(-)
+
+diff --git a/config/configure b/config/configure
+index e3b41d465..98bf24a74 100755
+--- a/config/configure
++++ b/config/configure
+@@ -826,8 +826,6 @@ enable_profile
+ enable_debug
+ enable_dev
+ enable_gui
+-enable_pthread
+-enable_pthread_lib
+ enable_iconv
+ enable_gd
+ enable_bzip2
+@@ -1497,8 +1495,6 @@ Optional Features:
+   --enable-gui=oldgui|newgui1|newgui2
+                           enable GUI (newgui2 uses GTK2 (default), other GUIs
+                           use GTK1)
+-  --disable-pthread       disable the use of pthread, hurts performance!
+-  --enable-pthread-lib    legacy option
+   --disable-iconv         disable the use of iconv
+   --disable-gd            disable the use of gd
+   --disable-bzip2         disable the use of bzip2
+@@ -4574,7 +4570,6 @@ GD=yes
+ BZIP2=yes
+ MAGIC=yes
+ ICONV=yes
+-USE_PTHREAD=yes
+ UPNP_NATPMP=no
+ UPNP_NATPMP_FORCE=no
+ 
+@@ -4627,7 +4622,6 @@ if  test "$MINIMUM" = "yes"  ||  test "$MINIMUM" = "all" ; then
+   MAGIC=no
+ fi
+ if  test "$MINIMUM" = "all" ; then
+-  USE_PTHREAD=no
+   ICONV=no
+ fi
+ 
+@@ -4753,18 +4747,6 @@ if test ! "$GUI" = "newgui2"; then
+   fi
+ fi
+ 
+-# Check whether --enable-pthread was given.
+-if test ${enable_pthread+y}
+-then :
+-  enableval=$enable_pthread; USE_PTHREAD="$enableval"
+-fi
+-
+-# Check whether --enable-pthread-lib was given.
+-if test ${enable_pthread_lib+y}
+-then :
+-  enableval=$enable_pthread_lib; USE_PTHREAD="$enableval"
+-fi
+-
+ # Check whether --enable-iconv was given.
+ if test ${enable_iconv+y}
+ then :
+@@ -9638,12 +9620,8 @@ printf "%s\n" "#define DISABLE_ICONV 1" >>confdefs.h
+   ICONV=no
+ fi
+ 
+-if test "$USE_PTHREAD" = "no"; then
+- PTHREAD_LIBS=""
+- echo "You disabled thread support, this will hurt MLDonkey performance!"
+-else
+-  echo "----- checking thread support (optional, strongly advised)"
+-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
++echo "----- checking pthread support"
++{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
+ printf %s "checking for a sed that does not truncate output... " >&6; }
+ if test ${ac_cv_path_SED+y}
+ then :
+@@ -10481,7 +10459,6 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
+ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ 
+ 
+-fi
+ 
+ # On linux plaforms, we will have to check that includes from kernel are
+ # available. glibc version test was shamelessly taken from
+@@ -13045,13 +13022,6 @@ echo "Core features:"
+ 
+ echo " - zlib (required)   enabled"
+ 
+-printf " - threads           "
+-if test "$USE_PTHREAD" = "yes"; then
+-  echo "enabled"
+-else
+-  echo "        disabled"
+-fi
+-
+ printf " - bzip2             "
+ if test "$BZIP2" = "yes"; then
+   echo "enabled"
+diff --git a/config/configure.in b/config/configure.in
+index f2dd838b0..cc7219efc 100644
+--- a/config/configure.in
++++ b/config/configure.in
+@@ -292,7 +292,6 @@ GD=yes
+ BZIP2=yes
+ MAGIC=yes
+ ICONV=yes
+-USE_PTHREAD=yes
+ UPNP_NATPMP=no
+ UPNP_NATPMP_FORCE=no
+ 
+@@ -336,7 +335,6 @@ if [ test "$MINIMUM" = "yes" ] || [ test "$MINIMUM" = "all" ]; then
+   MAGIC=no
+ fi
+ if [ test "$MINIMUM" = "all" ]; then
+-  USE_PTHREAD=no
+   ICONV=no
+ fi
+ 
+@@ -415,12 +413,6 @@ if test ! "$GUI" = "newgui2"; then
+   fi
+ fi
+ 
+-AC_ARG_ENABLE(pthread,
+-  AS_HELP_STRING([--disable-pthread], [disable the use of pthread, hurts performance!]),
+-  [USE_PTHREAD="$enableval"])
+-AC_ARG_ENABLE(pthread-lib,
+-  AS_HELP_STRING([--enable-pthread-lib], [legacy option]),
+-  [USE_PTHREAD="$enableval"])
+ AC_ARG_ENABLE(iconv,
+   AS_HELP_STRING([--disable-iconv], [disable the use of iconv]),
+   [ICONV="$enableval"])
+@@ -936,13 +928,8 @@ else
+   ICONV=no
+ fi
+ 
+-if test "$USE_PTHREAD" = "no"; then
+- PTHREAD_LIBS=""
+- echo "You disabled thread support, this will hurt MLDonkey performance!"
+-else
+-  echo "----- checking thread support (optional, strongly advised)"
+-  AX_PTHREAD
+-fi
++echo "----- checking pthread support"
++AX_PTHREAD
+ 
+ # On linux plaforms, we will have to check that includes from kernel are
+ # available. glibc version test was shamelessly taken from
+@@ -1553,13 +1540,6 @@ echo "Core features:"
+ 
+ echo " - zlib (required)   enabled"
+ 
+-printf " - threads           "
+-if test "$USE_PTHREAD" = "yes"; then
+-  echo "enabled"
+-else
+-  echo "        disabled"
+-fi
+-
+ printf " - bzip2             "
+ if test "$BZIP2" = "yes"; then
+   echo "enabled"
+diff --git a/src/daemon/common/commonHasher_c.c b/src/daemon/common/commonHasher_c.c
+index 0e1e17624..3dd200af3 100644
+--- a/src/daemon/common/commonHasher_c.c
++++ b/src/daemon/common/commonHasher_c.c
+@@ -18,6 +18,11 @@
+ */
+ 
+ #include <stdio.h>
++#include <string.h>
++#include <pthread.h>
++#include <signal.h>
++#include <sys/time.h>
++
+ #include "../../../config/config.h"
+ #include "../../utils/lib/os_stubs.h"
+ 
+@@ -122,153 +127,6 @@ static void tiger_tree_fd(OS_FD fd, size_t len, OFF_T pos,
+   }
+ }
+ 
+-
+-#ifndef HAVE_PTHREAD
+-
+-#define MAX_CHUNK_SIZE 1000000
+-static OS_FD job_fd;
+-static OFF_T job_pos;
+-static OFF_T job_len;
+-static value job_finished = 1;
+-
+-
+-/*
+-   This computes incrementally a Hash on a given file chunk. The 'timer'
+-variables forces computations to wait at least for 1 second between 
+-computations of MAX_CHUNK_SIZE(1 Mo) bytes hashes.
+-*/
+-
+-#define PARTIAL_HASH(HASH_NAME,HASH_CONTEXT,HASH_INIT,HASH_APPEND,HASH_FINISH) \
+-value HASH_NAME##_step(value job_v) \
+-{ \
+-  ssize_t nread; \
+-  size_t ndone = 0; \
+-  static int timer = 0; \
+-  static  HASH_CONTEXT context; \
+-  if(job_v == Val_unit) { \
+-    HASH_INIT(&context); \
+-    return Val_false; \
+-  } \
+-  if(--timer > 0) return Val_false; \
+-  while (job_len>0 && ndone< MAX_CHUNK_SIZE){ \
+-    size_t max_nread = HASH_BUFFER_LEN > job_len ? job_len : HASH_BUFFER_LEN; \
+-     \
+-    nread = os_read (job_fd, local_hash_buffer, max_nread); \
+-     \
+-    if(nread <= 0) { \
+-      unix_error(errno, "partial_hash: Read", Nothing); \
+-    } \
+-     \
+-    if(nread == 0){ \
+-      unsigned char *digest = String_val(Field(job_v, JOB_RESULT)); \
+-      HASH_FINISH (&context, digest); \
+-      job_finished = 1; \
+-      timer = 10; \
+-      return Val_true; \
+-    } \
+-     \
+-    HASH_APPEND (&context, local_hash_buffer, nread); \
+-    job_len -= nread; \
+-    ndone += nread; \
+-  } \
+-   \
+-  if(job_len <= 0){ \
+-    unsigned char *digest = String_val(Field(job_v, JOB_RESULT));       \
+-    HASH_FINISH (&context, digest); \
+-    job_finished = 1; \
+-    timer = 10; \
+-    return Val_true; \
+-  } \
+-  return Val_false;   \
+-}
+-
+-PARTIAL_HASH(sha1,SHA1_CTX,sha1_begin,sha1_hash, sha1_end)
+-PARTIAL_HASH(md5,md5_state_t,md5_init,md5_append,md5_finish)
+-PARTIAL_HASH(md4,MD4_CTX,MD4Init,MD4Update,md4_finish)
+-
+-value ml_job_start(value job_v, value fd_v)
+-{
+-  unsigned char *digest = String_val(Field(job_v, JOB_RESULT));
+-  
+-  job_fd = Fd_val(fd_v);
+-  job_pos = Int64_val(Field(job_v, JOB_BEGIN_POS));
+-  job_len = Int64_val(Field(job_v, JOB_LEN));
+-
+-  if(Field(job_v, JOB_METHOD) == METHOD_MD4)
+-  {
+-    if(job_len < MAX_CHUNK_SIZE){
+-      md4_unsafe64_fd_direct(job_fd, job_pos, job_len, digest); 
+-    } else {
+-      job_finished = 0;
+-      md4_step(Val_unit);
+-      os_lseek(job_fd, job_pos, SEEK_SET);
+-    }
+-    return Val_unit; 
+-  }
+-  
+-  if(Field(job_v, JOB_METHOD) == METHOD_MD5)
+-  {
+-    if(job_len < MAX_CHUNK_SIZE){
+-      md5_unsafe64_fd_direct(job_fd, job_pos, job_len, digest); 
+-    } else {
+-      job_finished = 0;
+-      md5_step(Val_unit);
+-      os_lseek(job_fd, job_pos, SEEK_SET);
+-    }
+-    return Val_unit; 
+-  }
+-  
+-  if(Field(job_v, JOB_METHOD) == METHOD_SHA1)
+-  {
+-    if(job_len < MAX_CHUNK_SIZE){
+-      sha1_unsafe64_fd_direct(job_fd, job_pos, job_len, digest); 
+-    } else {
+-      job_finished = 0;
+-      sha1_step(Val_unit);
+-      os_lseek(job_fd, job_pos, SEEK_SET);
+-    }
+-    return Val_unit; 
+-  }
+-  
+-  if(Field(job_v, JOB_METHOD) == METHOD_TIGER)
+-  {
+-/* This does a complete computation on the chunk */
+-    os_lseek(job_fd, job_pos, SEEK_SET);
+-    tiger_tree_fd(job_fd, job_len, 0, tiger_block_size(job_len), digest);
+-    return Val_unit;
+-  }
+-  
+-  printf("commonHasher_c.c: method not implemented\n");
+-  exit(2);
+-
+-  return Val_unit;
+-}
+-
+-value ml_job_done(value job_v)
+-{
+-  if(job_finished) return Val_true;
+-  
+-  if(Field(job_v, JOB_METHOD) == METHOD_SHA1){
+-    return sha1_step(job_v);
+-  }
+-  if(Field(job_v, JOB_METHOD) == METHOD_MD5){
+-    return md5_step(job_v);
+-  }
+-  if(Field(job_v, JOB_METHOD) == METHOD_MD4){
+-    return md4_step(job_v);
+-  }
+-  printf("commonHasher_c: spliting of computation not available for md4/md5\n");
+-  exit(2);
+-  return Val_false;
+-}
+-
+-#else
+-
+-#include <string.h>
+-#include <pthread.h>
+-#include <signal.h>
+-#include <sys/time.h>
+-
+ /* We use this shared variable for thread synchronization... yes, mutexes
+ and conditions would be better... wait for the patch */
+ static int volatile  job_done = 1;
+@@ -404,5 +262,3 @@ value ml_job_start(value job_v, value fd_v)
+   return Val_unit;
+ }
+ 
+-#endif
+-
+diff --git a/src/utils/lib/stubs_c.c b/src/utils/lib/stubs_c.c
+index f6e4a8301..295f33e79 100644
+--- a/src/utils/lib/stubs_c.c
++++ b/src/utils/lib/stubs_c.c
+@@ -777,7 +777,7 @@ static value addr_list_of_job(void)
+   CAMLreturn(v_addr_list);
+ }
+ 
+-#if !defined(HAVE_PTHREAD) || (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT))
++#if (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT))
+ 
+ value ml_ip_job_start(value job_v)
+ {
+@@ -804,7 +804,7 @@ value ml_has_pthread(value unit)
+   return Val_false; 
+ }
+ 
+-#else  /* !defined(HAVE_PTHREAD) || (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT)) */
++#else  /* (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT)) */
+ 
+ #include <string.h>
+ #include <pthread.h>
+@@ -922,7 +922,7 @@ value ml_has_pthread(value unit)
+   return Val_true; 
+ }
+ 
+-#endif  /* !defined(HAVE_PTHREAD) || (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT)) */
++#endif  /* (!(HAS_GETHOSTBYNAME_R || GETHOSTBYNAME_IS_REENTRANT) && !defined(HAS_SIGWAIT)) */
+ 
+ /*******************************************************************
+ 
+@@ -1196,7 +1196,7 @@ external_start (void)
+   }
+ #endif  /* defined(__MINGW32__) */
+ 
+-#if defined(HAVE_PTHREAD) && defined(PTW32_STATIC_LIB)
++#if defined(PTW32_STATIC_LIB)
+ 	pthread_win32_process_attach_np();
+ #endif
+ 	return Val_unit;
+@@ -1220,7 +1220,7 @@ external_exit (void)
+   }
+ #endif  /* defined(__MINGW32__) */
+ 
+-#if defined(HAVE_PTHREAD) && defined(PTW32_STATIC_LIB)
++#if defined(PTW32_STATIC_LIB)
+ 	pthread_win32_process_detach_np();
+ #endif
+ 
