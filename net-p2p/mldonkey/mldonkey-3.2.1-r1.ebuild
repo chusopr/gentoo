@@ -47,6 +47,7 @@ PATCHES=(
 	"${FILESDIR}/${PV}-cryptopp-configure.patch"
 	"${FILESDIR}/${PV}-cryptopp-headers.patch"
 	"${FILESDIR}/${PV}-drop-md4-asm-textrel.patch"
+	"${FILESDIR}/${PV}-gnutella-safe-strings.patch"
 )
 
 pkg_setup() {

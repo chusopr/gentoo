@@ -1,0 +1,223 @@
+From b26d45596279feb7b4871ebc669e4cddfa6911a1 Mon Sep 17 00:00:00 2001
+From: ygrek <root@ygrek.org>
+Date: Mon, 25 Nov 2024 00:37:17 +0000
+Subject: [PATCH] fix Gnutella build (safe-string)
+
+close #108
+---
+ src/networks/gnutella/gnutellaProto.ml | 23 ++++++++++++-----------
+ src/networks/gnutella2/g2Pandora.ml    | 22 +++++++++++-----------
+ src/networks/gnutella2/g2Proto.ml      | 20 ++++++++++----------
+ 3 files changed, 33 insertions(+), 32 deletions(-)
+
+diff --git a/src/networks/gnutella/gnutellaProto.ml b/src/networks/gnutella/gnutellaProto.ml
+index bea0867e2..6148f0327 100644
+--- a/src/networks/gnutella/gnutellaProto.ml
++++ b/src/networks/gnutella/gnutellaProto.ml
+@@ -583,10 +583,10 @@ let server_msg_to_string pkt =
+   a hops = 0 *)
+   buf_int buf 0;
+   write buf pkt.pkt_payload;
+-  let s = Buffer.contents buf in
+-  let len = String.length s - 23 in
++  let s = Bytes.unsafe_of_string @@ Buffer.contents buf in
++  let len = Bytes.length s - 23 in
+   str_int s 19 len;
+-  s 
++  Bytes.unsafe_to_string s
+ 
+ let new_packet t =
+   { 
+@@ -623,7 +623,7 @@ let udp_send ip port msg =
+               (Ip.to_string ip) port
+             (String.escaped s);
+           end;
+-        UdpSocket.write sock false s ip port;
++        UdpSocket.write sock false (Bytes.unsafe_of_string s) ip port;
+ (*        UdpSocket.write sock s Ip.localhost !!client_port *)
+       with e ->
+           lprintf "Exception %s in udp_send\n" (Printexc2.to_string e)
+@@ -653,15 +653,16 @@ let server_send_new s t =
+ 
+ let gnutella_handler parse f handler sock =
+   let b = TcpBufferedSocket.buf sock in
++  let bbuf = Bytes.unsafe_to_string b.buf in
+ (*  lprintf "GNUTELLA HANDLER\n"; 
+   dump (String.sub b.buf b.pos b.len); *)
+   try
+     while b.len >= 23 do
+-      let msg_len = get_int b.buf (b.pos+19) in
++      let msg_len = get_int bbuf (b.pos+19) in
+       if b.len >= 23 + msg_len then
+         begin
+-          let pkt_uid = get_md4 b.buf b.pos in
+-          let pkt_type = match get_uint8 b.buf (b.pos+16) with
++          let pkt_uid = get_md4 bbuf b.pos in
++          let pkt_type = match get_uint8 bbuf (b.pos+16) with
+               0 -> PING
+             | 1 -> PONG
+             | 2 -> BYE
+@@ -672,9 +673,9 @@ let gnutella_handler parse f handler sock =
+             | 129 -> QUERY_REPLY
+             | n -> UNKNOWN n
+           in
+-          let pkt_ttl = get_uint8 b.buf  (b.pos+17) in
+-          let pkt_hops = get_uint8 b.buf  (b.pos+18) in
+-          let data = String.sub b.buf (b.pos+23) msg_len in
++          let pkt_ttl = get_uint8 bbuf  (b.pos+17) in
++          let pkt_hops = get_uint8 bbuf  (b.pos+18) in
++          let data = String.sub bbuf (b.pos+23) msg_len in
+           buf_used b (msg_len + 23);
+           let pkt = {
+               pkt_uid = pkt_uid;
+@@ -831,7 +832,7 @@ let create_qrt_table words table_size =
+         ((array.(i*2) - old_array.(i*2)) land 15) lsl 4) + 
+       ((array.(i*2+1) - old_array.(i*2+1)) land 15))
+   done;
+-  table
++  Bytes.unsafe_to_string table
+ 
+ let send_qrt_sequence s update_table =
+ 
+diff --git a/src/networks/gnutella2/g2Pandora.ml b/src/networks/gnutella2/g2Pandora.ml
+index 4a16c13b9..df19ce3c3 100644
+--- a/src/networks/gnutella2/g2Pandora.ml
++++ b/src/networks/gnutella2/g2Pandora.ml
+@@ -76,7 +76,7 @@ let new_packet t (n : int) ip1 port1 ip2 port2 s =
+ (* lprintf "Could not parse: %s\n" (Printexc2.to_string e) *) ()
+ 
+ let hescaped s =
+-  String2.replace_char s '\r' ' ';s
++  String2.replace_char s '\r' ' '
+ 
+ let rec iter s pos =
+   if pos < String.length s then
+@@ -150,11 +150,11 @@ let piter s1 deflate h msgs =
+       if deflate then
+         let z = Zlib.inflate_init true in
+         let _ =  
+-          let s2 = String.make 100000 '\000' in
++          let s2 = Bytes.make 100000 '\000' in
+           let f = Zlib.Z_SYNC_FLUSH in
+-          let (_,used_in, used_out) = Zlib.inflate z s1 0 len s2 0 100000 f in
++          let (_,used_in, used_out) = Zlib.inflate z (Bytes.unsafe_of_string s1) 0 len s2 0 100000 f in
+           lprintf "decompressed %d/%d\n" used_out len;
+-          String.sub s2 0 used_out
++          Bytes.sub_string s2 0 used_out
+         in
+         begin
+ (* First of all, deflate in one pass *)
+@@ -162,12 +162,12 @@ let piter s1 deflate h msgs =
+ (*                lprintf "PARSE ONE BEGIN...\n%s\n" (String.escaped s1); *)
+             let z = Zlib.inflate_init true in
+             let s =  
+-              let s2 = String.make 1000000 '\000' in
++              let s2 = Bytes.make 1000000 '\000' in
+               let f = Zlib.Z_SYNC_FLUSH in
+               let len = String.length s1 in
+-              let (_,used_in, used_out) = Zlib.inflate z s1 0 len s2
++              let (_,used_in, used_out) = Zlib.inflate z (Bytes.unsafe_of_string s1) 0 len s2
+                   0 1000000 f in
+-              String.sub s2 0 used_out
++              Bytes.sub_string s2 0 used_out
+             in
+             ignore (parse_string s);
+ (*                lprintf "...PARSE ONE END\n"; *)
+@@ -184,12 +184,12 @@ let piter s1 deflate h msgs =
+               let m = if offset > 0 then String.sub m offset (len - offset) else m in
+               let rem = rem ^ m in
+               let len = String.length rem in
+-              let s2 = String.make 100000 '\000' in
++              let s2 = Bytes.make 100000 '\000' in
+               let f = Zlib.Z_SYNC_FLUSH in
+ (*                  lprintf "deflating %d bytes\n" len; *)
+-              let (_,used_in, used_out) = Zlib.inflate z rem 0 len s2 0 100000 f in
++              let (_,used_in, used_out) = Zlib.inflate z (Bytes.unsafe_of_string rem) 0 len s2 0 100000 f in
+ (*                  lprintf "decompressed %d/%d[%d]\n" used_out len used_in; *)
+-              let m = buf ^ (String.sub s2 0 used_out) in
++              let m = buf ^ (Bytes.sub_string s2 0 used_out) in
+               
+               let buf =
+                 try
+@@ -266,4 +266,4 @@ let commit () =
+       lprintf "\nEND OF CONNECTION\n---------------------------------------\n";
+   ) connections;
+   
+-  
+\ No newline at end of file
++  
+diff --git a/src/networks/gnutella2/g2Proto.ml b/src/networks/gnutella2/g2Proto.ml
+index f00ee65f8..64b46c52b 100644
+--- a/src/networks/gnutella2/g2Proto.ml
++++ b/src/networks/gnutella2/g2Proto.ml
+@@ -884,7 +884,7 @@ let resend_udp_packets () =
+                 Fifo.take udp_packet_waiting_for_ack in
+               if not !acked then begin
+                   if !verbose then lprintf_nl "resend_udp_packets %s %d: %d" (Ip.to_string ip) port seq;
+-                  UdpSocket.write sock false s ip port;
++                  UdpSocket.write sock false (Bytes.unsafe_of_string s) ip port;
+                   if times < 3 then 
+                     Fifo.put udp_packet_waiting_for_ack (s, ip, port, seq, 
+                       times+1, 
+@@ -923,7 +923,7 @@ let udp_send ip port msg =
+           end;
+         Fifo.put udp_packet_waiting_for_ack 
+           (s, ip, port, !udp_counter, 0, last_time () + 10, ref false);
+-        UdpSocket.write sock false s ip port;
++        UdpSocket.write sock false (Bytes.unsafe_of_string s) ip port;
+ (*        UdpSocket.write sock s Ip.localhost !!client_port *)
+       with e ->
+           lprintf "Exception %s in udp_send\n" (Printexc2.to_string e)
+@@ -938,7 +938,7 @@ let udp_send_ack ip port counter =
+           (char_of_int ((counter lsr 8) land 0xff))
+         in
+         (* if !verbose then lprintf_nl "udp_send_ack: %s %d" (Ip.to_string ip) port; *)
+-        UdpSocket.write sock false s ip port
++        UdpSocket.write sock false (Bytes.unsafe_of_string s) ip port
+       with e ->
+           lprintf "Exception %s in udp_send\n" (Printexc2.to_string e)
+ 
+@@ -963,12 +963,12 @@ let g2_handler f gconn sock  =
+ 
+   if !verbose then begin
+     lprintf_nl "g2_handler:";
+-    AnyEndian.dump_hex (String.sub b.buf b.pos b.len);
++    AnyEndian.dump_hex (Bytes.sub_string b.buf b.pos b.len);
+   end;
+ 
+   try
+     while b.len >= 2 do
+-      let s = b.buf in
++      let s = Bytes.unsafe_to_string b.buf in
+       (* if !verbose then lprintf_nl "g2_tcp_packet_handler"; *)
+       let cb = get_uint8 s b.pos in
+       let len_len = (cb lsr 6) land 3 in
+@@ -993,8 +993,8 @@ let g2_handler f gconn sock  =
+       if b.len < msg_len then raise Not_found;
+       
+       (* if !verbose then lprintf_nl "One gnutella2 packet received";  *)
+-      let name = String.sub b.buf (b.pos + pos) name_len in
+-      let packet = String.sub b.buf (b.pos + pos + name_len) len in
++      let name = String.sub s (b.pos + pos) name_len in
++      let packet = String.sub s (b.pos + pos + name_len) len in
+       let has_children = cb land 4 <> 0 in
+       TcpBufferedSocket.buf_used b msg_len;
+       f gconn (g2_parse [name] has_children be packet)
+@@ -1479,14 +1479,14 @@ let on_send_pings () =
+ let server_send_push s uid uri = ()
+ 
+ let bitv_to_string bitv =
+-  let s = String.make ((Bitv.length bitv) / 8) '\000' in
++  let s = Bytes.make ((Bitv.length bitv) / 8) '\000' in
+   Bitv.iteri_true (fun i ->
+       let pos = i / 8 in
+       let bit = 7 - (i mod 8) in
+       let x = (1 lsl bit) in
+-      s.[pos] <- char_of_int ( (int_of_char s.[pos]) lor x );
++      Bytes.set s pos (char_of_int ( (int_of_char @@ Bytes.get s pos) lor x ));
+   ) bitv;
+-  s
++  Bytes.unsafe_to_string s
+     
+ (* http://www.gnutella2.com/index.php/Query_Hash_Tables *)
+ let create_qrt_table words table_size =
