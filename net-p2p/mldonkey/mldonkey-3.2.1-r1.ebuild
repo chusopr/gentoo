@@ -46,6 +46,7 @@ PATCHES=(
 	"${FILESDIR}/${PV}-cryptopp-unbundle.patch"
 	"${FILESDIR}/${PV}-cryptopp-configure.patch"
 	"${FILESDIR}/${PV}-cryptopp-headers.patch"
+	"${FILESDIR}/${PV}-drop-md4-asm-textrel.patch"
 )
 
 pkg_setup() {
@@ -60,14 +61,14 @@ pkg_setup() {
 }
 
 src_prepare() {
+	default
+
 	cd config || die
 	eautoconf
 	cd .. || die
 	if ! use ocamlopt; then
 		sed -i -e "s/ocamlopt/idontwantocamlopt/g" "${S}/config/configure" || die "failed to disable ocamlopt"
 	fi
-
-	default
 }
 
 src_configure() {
