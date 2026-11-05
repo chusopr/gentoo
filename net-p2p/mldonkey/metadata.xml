@@ -15,6 +15,6 @@
     <flag name="gnutella">enable gnutella and gnutella2 support</flag>
   </use>
   <upstream>
-    <remote-id type="github">ygrek/mldonkey</remote-id>
+    <remote-id type="github">carlonluca/mldonkey</remote-id>
   </upstream>
 </pkgmetadata>
